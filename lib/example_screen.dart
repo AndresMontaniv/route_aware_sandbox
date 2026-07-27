@@ -30,6 +30,7 @@ class ExampleScreen extends StatefulWidget {
 }
 
 class _ExampleScreenState extends State<ExampleScreen> {
+  RouterDelegate<Object>? _routerDelegate;
   StreamSubscription<int>? _subscription;
   final ValueNotifier<ExampleScreenStateData> _stateNotifier = ValueNotifier(
     const ExampleScreenStateData(
@@ -39,7 +40,35 @@ class _ExampleScreenState extends State<ExampleScreen> {
   );
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_routerDelegate == null) {
+      _routerDelegate = GoRouter.of(context).routerDelegate;
+      _routerDelegate?.addListener(_onRouteChanged);
+    }
+  }
+
+  void _onRouteChanged() {
+    if (!mounted) return;
+    
+    String? topRouteName;
+    if (_routerDelegate is GoRouterDelegate) {
+      topRouteName = (_routerDelegate as GoRouterDelegate).currentConfiguration.last.route.name;
+    }
+    
+    debugPrint('[ExampleScreen] _onRouteChanged triggered. Top route is: $topRouteName');
+    
+    if (topRouteName == ExampleScreen.name) {
+      _startStream();
+    } else {
+      _pauseStream();
+      debugPrint('[ExampleScreen] Stream Paused due to route change.');
+    }
+  }
+
+  @override
   void dispose() {
+    _routerDelegate?.removeListener(_onRouteChanged);
     _subscription?.cancel();
     _stateNotifier.dispose();
     super.dispose();
@@ -54,6 +83,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
         connectionState: StreamConnectionState.listening,
         value: _stateNotifier.value.value,
       );
+      debugPrint('[ExampleScreen] Stream Resumed.');
       return;
     }
 
@@ -63,6 +93,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
       value: 0,
     );
 
+    debugPrint('[ExampleScreen] Stream Started.');
     _subscription = Stream.periodic(const Duration(seconds: 1), (count) => count).listen((value) {
       _stateNotifier.value = ExampleScreenStateData(
         connectionState: StreamConnectionState.listening,
@@ -78,6 +109,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
         connectionState: StreamConnectionState.paused,
         value: _stateNotifier.value.value,
       );
+      debugPrint('[ExampleScreen] Stream Paused.');
     }
   }
 
@@ -88,6 +120,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
       connectionState: StreamConnectionState.disconnected,
       value: 0,
     );
+    debugPrint('[ExampleScreen] Stream Cancelled.');
   }
 
   @override
