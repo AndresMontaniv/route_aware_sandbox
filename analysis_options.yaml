@@ -10,21 +10,21 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   language:
     # Forces explicit casting, preventing silent runtime type errors.
-    # strict-casts: true
+    strict-casts: true
     # Forces explicit variable typing when the analyzer cannot infer it.
-    # strict-inference: true
+    strict-inference: true
     # Prevents the use of generic types without specifying arguments (e.g., requires List<String> instead of just List).
     strict-raw-types: true
 
-  # errors:
+  errors:
     # Upgraded severities for critical architectural flaws
-    # dead_code: error
-    # invalid_assignment: warning
-    # missing_return: error
+    dead_code: error
+    invalid_assignment: error
+    missing_return: error
     # Treat TODOs as warnings so they aren't forgotten before release
-    # todo: warning
+    todo: warning
     # Ensure invalid annotations break the build
-    # invalid_annotation_target: error
+    invalid_annotation_target: error
 
 linter:
   rules:
@@ -39,11 +39,11 @@ linter:
     prefer_final_locals: true
     prefer_final_fields: true
     always_declare_return_types: true
-    # avoid_dynamic_calls: true
+    avoid_dynamic_calls: true
     avoid_print: true
     prefer_relative_imports: true
     use_build_context_synchronously: true
-    # unawaited_futures: true
+    unawaited_futures: true
     cancel_subscriptions: true
     close_sinks: true
 

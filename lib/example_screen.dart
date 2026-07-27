@@ -30,6 +30,7 @@ class ExampleScreen extends StatefulWidget {
 }
 
 class _ExampleScreenState extends State<ExampleScreen> {
+  late final AppLifecycleListener _lifecycleListener;
   RouterDelegate<Object>? _routerDelegate;
   StreamSubscription<int>? _subscription;
   final ValueNotifier<ExampleScreenStateData> _stateNotifier = ValueNotifier(
@@ -38,6 +39,26 @@ class _ExampleScreenState extends State<ExampleScreen> {
       value: 0,
     ),
   );
+
+  @override
+  void initState() {
+    super.initState();
+    _startStream();
+    _lifecycleListener = AppLifecycleListener(
+      onHide: () {
+        debugPrint('[ExampleScreen] App backgrounded - Pausing.');
+        _pauseStream();
+      },
+      onPause: () {
+        debugPrint('[ExampleScreen] App backgrounded - Pausing.');
+        _pauseStream();
+      },
+      onResume: () {
+        debugPrint('[ExampleScreen] App foregrounded - Checking route.');
+        _resumeIfTopRoute();
+      },
+    );
+  }
 
   @override
   void didChangeDependencies() {
@@ -50,28 +71,48 @@ class _ExampleScreenState extends State<ExampleScreen> {
 
   void _onRouteChanged() {
     if (!mounted) return;
-    
+
     String? topRouteName;
     if (_routerDelegate is GoRouterDelegate) {
-      topRouteName = (_routerDelegate as GoRouterDelegate).currentConfiguration.last.route.name;
+      final config = (_routerDelegate as GoRouterDelegate).currentConfiguration;
+      if (config.isNotEmpty) {
+        topRouteName = config.last.route.name;
+      }
     }
-    
+
     debugPrint('[ExampleScreen] _onRouteChanged triggered. Top route is: $topRouteName');
-    
+
     if (topRouteName == ExampleScreen.name) {
       _startStream();
     } else {
       _pauseStream();
-      debugPrint('[ExampleScreen] Stream Paused due to route change.');
+      debugPrint('[ExampleScreen] Stream Paused due to route change. Last value was: ${_stateNotifier.value.value}');
     }
   }
 
   @override
   void dispose() {
+    _lifecycleListener.dispose();
     _routerDelegate?.removeListener(_onRouteChanged);
     _subscription?.cancel();
     _stateNotifier.dispose();
     super.dispose();
+  }
+
+  void _resumeIfTopRoute() {
+    String? topRouteName;
+    if (_routerDelegate is GoRouterDelegate) {
+      final config = (_routerDelegate as GoRouterDelegate).currentConfiguration;
+      if (config.isNotEmpty) {
+        topRouteName = config.last.route.name;
+      }
+    }
+
+    if (topRouteName == ExampleScreen.name) {
+      if (_stateNotifier.value.connectionState != StreamConnectionState.listening) {
+        _startStream();
+      }
+    }
   }
 
   void _startStream() {
@@ -83,7 +124,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
         connectionState: StreamConnectionState.listening,
         value: _stateNotifier.value.value,
       );
-      debugPrint('[ExampleScreen] Stream Resumed.');
+      debugPrint('[ExampleScreen] Stream Resumed. Resuming with last saved value: ${_stateNotifier.value.value}');
       return;
     }
 
@@ -94,7 +135,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
     );
 
     debugPrint('[ExampleScreen] Stream Started.');
-    _subscription = Stream.periodic(const Duration(seconds: 1), (count) => count).listen((value) {
+    _subscription = Stream.periodic(const Duration(seconds: 3), (count) => count).listen((value) {
       _stateNotifier.value = ExampleScreenStateData(
         connectionState: StreamConnectionState.listening,
         value: value,
@@ -109,7 +150,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
         connectionState: StreamConnectionState.paused,
         value: _stateNotifier.value.value,
       );
-      debugPrint('[ExampleScreen] Stream Paused.');
+      debugPrint('[ExampleScreen] Stream Paused. Last value was: ${_stateNotifier.value.value}');
     }
   }
 
