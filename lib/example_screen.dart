@@ -18,6 +18,16 @@ class ExampleScreenStateData {
     required this.connectionState,
     required this.value,
   });
+
+  ExampleScreenStateData copyWith({
+    StreamConnectionState? connectionState,
+    int? value,
+  }) {
+    return ExampleScreenStateData(
+      connectionState: connectionState ?? this.connectionState,
+      value: value ?? this.value,
+    );
+  }
 }
 
 class ExampleScreen extends StatefulWidget {
@@ -120,24 +130,22 @@ class _ExampleScreenState extends State<ExampleScreen> {
 
     if (_subscription != null && _stateNotifier.value.connectionState == StreamConnectionState.paused) {
       _subscription!.resume();
-      _stateNotifier.value = ExampleScreenStateData(
+      _stateNotifier.value = _stateNotifier.value.copyWith(
         connectionState: StreamConnectionState.listening,
-        value: _stateNotifier.value.value,
       );
       debugPrint('[ExampleScreen] Stream Resumed. Resuming with last saved value: ${_stateNotifier.value.value}');
       return;
     }
 
     _subscription?.cancel();
-    _stateNotifier.value = const ExampleScreenStateData(
+    _stateNotifier.value = _stateNotifier.value.copyWith(
       connectionState: StreamConnectionState.listening,
       value: 0,
     );
 
     debugPrint('[ExampleScreen] Stream Started.');
     _subscription = Stream.periodic(const Duration(seconds: 3), (count) => count).listen((value) {
-      _stateNotifier.value = ExampleScreenStateData(
-        connectionState: StreamConnectionState.listening,
+      _stateNotifier.value = _stateNotifier.value.copyWith(
         value: value,
       );
     });
@@ -146,9 +154,8 @@ class _ExampleScreenState extends State<ExampleScreen> {
   void _pauseStream() {
     if (_stateNotifier.value.connectionState == StreamConnectionState.listening) {
       _subscription?.pause();
-      _stateNotifier.value = ExampleScreenStateData(
+      _stateNotifier.value = _stateNotifier.value.copyWith(
         connectionState: StreamConnectionState.paused,
-        value: _stateNotifier.value.value,
       );
       debugPrint('[ExampleScreen] Stream Paused. Last value was: ${_stateNotifier.value.value}');
     }
@@ -157,7 +164,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
   void _cancelStream() {
     _subscription?.cancel();
     _subscription = null;
-    _stateNotifier.value = const ExampleScreenStateData(
+    _stateNotifier.value = _stateNotifier.value.copyWith(
       connectionState: StreamConnectionState.disconnected,
       value: 0,
     );
@@ -185,7 +192,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
                         const SizedBox(width: 16),
                       ],
                       Text(
-                        _getStatusText(stateData.connectionState),
+                        stateData.connectionState.name,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ],
@@ -229,16 +236,5 @@ class _ExampleScreenState extends State<ExampleScreen> {
         ],
       ),
     );
-  }
-
-  String _getStatusText(StreamConnectionState state) {
-    switch (state) {
-      case StreamConnectionState.disconnected:
-        return 'Disconnected';
-      case StreamConnectionState.listening:
-        return 'Listening...';
-      case StreamConnectionState.paused:
-        return 'Paused';
-    }
   }
 }
