@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import 'barcode_screen.dart';
 import 'example_screen.dart';
 import 'home_screen.dart';
 import 'main_layout.dart';
@@ -43,6 +44,15 @@ final appRouter = GoRouter(
               path: '/example',
               name: ExampleScreen.name,
               builder: (context, state) => const ExampleScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/barcode',
+              name: BarcodeScreen.name,
+              builder: (context, state) => const BarcodeScreen(),
             ),
           ],
         ),
