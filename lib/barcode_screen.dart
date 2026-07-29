@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:barcode_hid_listener/barcode_hid_listener.dart';
 import 'package:camera_scanner_kit/camera_scanner_kit.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class BarcodeScreen extends StatefulWidget {
@@ -17,10 +20,26 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   final List<String> _scannedItems = [];
   RouterDelegate<Object>? _routerDelegate;
 
+  // Step 1: HID service + subscription
+  late final BarcodeKeyboardService _keyboardService;
+  StreamSubscription<BarcodeCapture>? _keyboardSubscription;
+
   void _onScanned(String barcode) {
     setState(() {
       _scannedItems.insert(0, barcode);
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Step 2: Initialize service, subscribe to its stream, and start immediately.
+    _keyboardService = BarcodeKeyboardService(const BarcodeScannerConfig());
+    _keyboardSubscription = _keyboardService.barcodeStream.listen(
+      (capture) => _onScanned(capture.rawValue),
+    );
+    _keyboardService.start();
+    debugPrint('[BarcodeScreen] HID Listener started on init.');
   }
 
   @override
@@ -56,12 +75,18 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
       } catch (e) {
         debugPrint('[BarcodeScreen] Could not stop camera on remount: $e');
       }
+      // Step 3 (active branch): Auto-resume HID listener.
+      _keyboardService.start();
+      debugPrint('[BarcodeScreen] Route active - HID Listener Auto-Resumed.');
     } else {
       _scannerController.stop();
       if (_isScannerMounted.value) {
         _isScannerMounted.value = false;
         debugPrint('[BarcodeScreen] Route inactive - Unmounted Scanner View to free Singleton.');
       }
+      // Step 3 (inactive branch): Pause HID listener to prevent background scanning.
+      _keyboardService.stop();
+      debugPrint('[BarcodeScreen] Route inactive - HID Listener Paused.');
     }
   }
 
@@ -70,6 +95,9 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
     _routerDelegate?.removeListener(_onRouteChanged);
     _scannerController.dispose();
     _isScannerMounted.dispose();
+    // Step 4: Tear down HID resources.
+    _keyboardSubscription?.cancel();
+    _keyboardService.dispose();
     super.dispose();
   }
 

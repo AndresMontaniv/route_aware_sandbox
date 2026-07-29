@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.13.1"
+  barcode_hid_listener:
+    dependency: "direct main"
+    description:
+      name: barcode_hid_listener
+      sha256: "9275d7764d4cfbabd85bf07e53566b3933d306699a663fc725d2d455f070d572"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   boolean_selector:
     dependency: transitive
     description:
