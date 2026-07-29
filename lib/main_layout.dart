@@ -6,7 +6,8 @@ import 'profile_screen.dart';
 enum _BottomMenuTab {
   home,
   example,
-  barcode;
+  barcode,
+  visibility;
 
   const _BottomMenuTab();
 }
@@ -84,6 +85,11 @@ class MainLayout extends StatelessWidget {
                   tab: _BottomMenuTab.barcode,
                   icon: Icons.barcode_reader,
                   activeIcon: Icons.barcode_reader,
+                ),
+                _buildNavItem(
+                  tab: _BottomMenuTab.visibility,
+                  icon: Icons.visibility_off_outlined,
+                  activeIcon: Icons.visibility_off,
                 ),
               ],
             ),

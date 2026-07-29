@@ -6,6 +6,7 @@ import 'home_screen.dart';
 import 'main_layout.dart';
 import 'profile_screen.dart';
 import 'push_example.dart';
+import 'visibility_test_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/home',
@@ -53,6 +54,15 @@ final appRouter = GoRouter(
               path: '/barcode',
               name: BarcodeScreen.name,
               builder: (context, state) => const BarcodeScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/visibility-test',
+              name: VisibilityTestScreen.name,
+              builder: (context, state) => const VisibilityTestScreen(),
             ),
           ],
         ),
