@@ -14,7 +14,7 @@ class BarcodeScreen extends StatefulWidget {
   State<BarcodeScreen> createState() => _BarcodeScreenState();
 }
 
-class _BarcodeScreenState extends State<BarcodeScreen> {
+class _BarcodeScreenState extends State<BarcodeScreen> with WidgetsBindingObserver {
   final BarcodeScannerController _scannerController = BarcodeScannerController();
   final ValueNotifier<bool> _isScannerMounted = ValueNotifier<bool>(true);
   final List<String> _scannedItems = [];
@@ -40,18 +40,34 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
     debugPrint('[BarcodeScreen] HID Listener started on init.');
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _initHidService();
+  void _initRouterListener() {
+    _routerDelegate = GoRouter.of(context).routerDelegate;
+    _routerDelegate?.addListener(_onRouteChanged);
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_routerDelegate == null) {
-      _routerDelegate = GoRouter.of(context).routerDelegate;
-      _routerDelegate?.addListener(_onRouteChanged);
+  void initState() {
+    super.initState();
+    _initRouterListener();
+    _initHidService();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        debugPrint('[BarcodeScreen] App backgrounded - Pausing.');
+        _keyboardService.stop();
+        break;
+
+      case AppLifecycleState.resumed:
+        debugPrint('[BarcodeScreen] App foregrounded - Checking route.');
+        // TODO: Here we still need to figure out if we need to restart it
+        break;
     }
   }
 
