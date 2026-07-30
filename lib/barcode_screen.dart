@@ -25,15 +25,13 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   StreamSubscription<BarcodeCapture>? _keyboardSubscription;
 
   void _onScanned(String barcode) {
-    setState(() {
-      _scannedItems.insert(0, barcode);
-    });
+    _scannedItems.insert(0, barcode);
+    if (mounted) {
+      setState(() {});
+    }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    // Step 2: Initialize service, subscribe to its stream, and start immediately.
+  void _initHidService() {
     _keyboardService = BarcodeKeyboardService(const BarcodeScannerConfig());
     _keyboardSubscription = _keyboardService.barcodeStream.listen(
       (capture) => _onScanned(capture.rawValue),
@@ -43,12 +41,45 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _initHidService();
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_routerDelegate == null) {
       _routerDelegate = GoRouter.of(context).routerDelegate;
       _routerDelegate?.addListener(_onRouteChanged);
     }
+  }
+
+  void _onStopBeingTopRoute() {
+    _scannerController.stop();
+    if (_isScannerMounted.value) {
+      _isScannerMounted.value = false;
+      debugPrint('[BarcodeScreen] Route inactive - Unmounted Scanner View to free Singleton.');
+    }
+    // Step 3 (inactive branch): Pause HID listener to prevent background scanning.
+    _keyboardService.stop();
+    debugPrint('[BarcodeScreen] Route inactive - HID Listener Paused.');
+  }
+
+  void _onResumeBeingTopRoute() {
+    if (!_isScannerMounted.value) {
+      _isScannerMounted.value = true;
+      debugPrint('[BarcodeScreen] Route active - Remounted Scanner View.');
+    }
+    try {
+      _scannerController.stop();
+      debugPrint('[BarcodeScreen] Camera explicitly stopped for manual resume.');
+    } catch (e) {
+      debugPrint('[BarcodeScreen] Could not stop camera on remount: $e');
+    }
+    // Step 3 (active branch): Auto-resume HID listener.
+    _keyboardService.start();
+    debugPrint('[BarcodeScreen] Route active - HID Listener Auto-Resumed.');
   }
 
   void _onRouteChanged() {
@@ -65,28 +96,9 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
     debugPrint('[BarcodeScreen] _onRouteChanged - top route: $topRouteName');
 
     if (topRouteName == BarcodeScreen.name) {
-      if (!_isScannerMounted.value) {
-        _isScannerMounted.value = true;
-        debugPrint('[BarcodeScreen] Route active - Remounted Scanner View.');
-      }
-      try {
-        _scannerController.stop();
-        debugPrint('[BarcodeScreen] Camera explicitly stopped for manual resume.');
-      } catch (e) {
-        debugPrint('[BarcodeScreen] Could not stop camera on remount: $e');
-      }
-      // Step 3 (active branch): Auto-resume HID listener.
-      _keyboardService.start();
-      debugPrint('[BarcodeScreen] Route active - HID Listener Auto-Resumed.');
+      _onResumeBeingTopRoute();
     } else {
-      _scannerController.stop();
-      if (_isScannerMounted.value) {
-        _isScannerMounted.value = false;
-        debugPrint('[BarcodeScreen] Route inactive - Unmounted Scanner View to free Singleton.');
-      }
-      // Step 3 (inactive branch): Pause HID listener to prevent background scanning.
-      _keyboardService.stop();
-      debugPrint('[BarcodeScreen] Route inactive - HID Listener Paused.');
+      _onStopBeingTopRoute();
     }
   }
 

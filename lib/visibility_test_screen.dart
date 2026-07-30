@@ -28,16 +28,36 @@ class _VisibilityTestScreenState extends State<VisibilityTestScreen> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    // Step 2: Initialize service, subscribe to its stream, and start immediately.
+  void _onVisibilityChanged(VisibilityInfo info) {
+    debugPrint('Visibility changed: ${info.visibleFraction}');
+    if (info.visibleFraction < 0.1) {
+      if (_scannerController.isCameraActive) {
+        debugPrint('[VisibilityTest] - Turning Camera OFF');
+        _scannerController.stop();
+      }
+      // Step 3 (hidden): Pause HID listener to prevent background scanning.
+      _keyboardService.stop();
+      debugPrint('[VisibilityTest] - Screen hidden: HID Listener Paused.');
+    } else {
+      // Step 3 (visible): Auto-resume HID listener. Camera stays stopped.
+      _keyboardService.start();
+      debugPrint('[VisibilityTest] - Screen visible: HID Listener Auto-Resumed.');
+    }
+  }
+
+  void _initHidService() {
     _keyboardService = BarcodeKeyboardService(const BarcodeScannerConfig());
     _keyboardSubscription = _keyboardService.barcodeStream.listen(
       (capture) => _onScanned(capture.rawValue),
     );
     _keyboardService.start();
     debugPrint('[VisibilityTest] HID Listener started on init.');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initHidService();
   }
 
   @override
@@ -55,22 +75,7 @@ class _VisibilityTestScreenState extends State<VisibilityTestScreen> {
       children: [
         VisibilityDetector(
           key: const Key('scanner-visibility'),
-          onVisibilityChanged: (info) {
-            debugPrint('Visibility changed: ${info.visibleFraction}');
-            if (info.visibleFraction < 0.1) {
-              if (_scannerController.isCameraActive) {
-                debugPrint('[VisibilityTest] - Turning Camera OFF');
-                _scannerController.stop();
-              }
-              // Step 3 (hidden): Pause HID listener to prevent background scanning.
-              _keyboardService.stop();
-              debugPrint('[VisibilityTest] - Screen hidden: HID Listener Paused.');
-            } else {
-              // Step 3 (visible): Auto-resume HID listener. Camera stays stopped.
-              _keyboardService.start();
-              debugPrint('[VisibilityTest] - Screen visible: HID Listener Auto-Resumed.');
-            }
-          },
+          onVisibilityChanged: _onVisibilityChanged,
           child: BarcodeScannerView(
             controller: _scannerController,
             showToggleButton: true,
