@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:camera_scanner_kit/camera_scanner_kit.dart';
+
+import 'top_route_aware_mixin.dart';
 
 class CameraScannerScreen extends StatefulWidget {
   static const name = 'camera-scanner';
@@ -11,11 +12,48 @@ class CameraScannerScreen extends StatefulWidget {
   State<CameraScannerScreen> createState() => _CameraScannerScreenState();
 }
 
-class _CameraScannerScreenState extends State<CameraScannerScreen> {
+class _CameraScannerScreenState extends State<CameraScannerScreen> with TopRouteAwareMixin {
   final BarcodeScannerController _scannerController = BarcodeScannerController();
   final ValueNotifier<bool> _isScannerMounted = ValueNotifier<bool>(true);
   final List<String> _scannedItems = [];
-  RouterDelegate<Object>? _routerDelegate;
+
+  // ---------------------------------------------------------------------------
+  // TopRouteAwareMixin
+  // ---------------------------------------------------------------------------
+
+  @override
+  String get routeAwareName => CameraScannerScreen.name;
+
+  @override
+  void onTopRouteGained() {
+    if (!_isScannerMounted.value) {
+      _isScannerMounted.value = true;
+      debugPrint('[CameraScannerScreen] Route active - Remounted Scanner View.');
+    }
+    if (_scannerController.isCameraActive) {
+      try {
+        _scannerController.stop();
+        debugPrint('[CameraScannerScreen] Camera explicitly stopped for manual resume.');
+      } catch (e) {
+        debugPrint('[CameraScannerScreen] Could not stop camera on remount: $e');
+      }
+    }
+  }
+
+  @override
+  void onTopRouteLost() {
+    if (_scannerController.isCameraActive) {
+      _scannerController.stop();
+    }
+    if (_isScannerMounted.value) {
+      _isScannerMounted.value = false;
+      debugPrint('[CameraScannerScreen] Route inactive - Unmounted Scanner View to free Singleton.');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scanned items
+  // ---------------------------------------------------------------------------
 
   void _onScanned(String barcode) {
     _scannedItems.insert(0, barcode);
@@ -24,63 +62,20 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> {
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_routerDelegate == null) {
-      _routerDelegate = GoRouter.of(context).routerDelegate;
-      _routerDelegate?.addListener(_onRouteChanged);
-    }
-  }
-
-  void _onResignedTopRoute() {
-    _scannerController.stop();
-    if (_isScannerMounted.value) {
-      _isScannerMounted.value = false;
-      debugPrint('[BarcodeScreen] Route inactive - Unmounted Scanner View to free Singleton.');
-    }
-  }
-
-  void _onBecameTopRoute() {
-    if (!_isScannerMounted.value) {
-      _isScannerMounted.value = true;
-      debugPrint('[BarcodeScreen] Route active - Remounted Scanner View.');
-    }
-    try {
-      _scannerController.stop();
-      debugPrint('[BarcodeScreen] Camera explicitly stopped for manual resume.');
-    } catch (e) {
-      debugPrint('[BarcodeScreen] Could not stop camera on remount: $e');
-    }
-  }
-
-  void _onRouteChanged() {
-    if (!mounted) return;
-
-    String? topRouteName;
-    if (_routerDelegate is GoRouterDelegate) {
-      final config = (_routerDelegate as GoRouterDelegate).currentConfiguration;
-      if (config.isNotEmpty) {
-        topRouteName = config.last.route.name;
-      }
-    }
-
-    debugPrint('[BarcodeScreen] _onRouteChanged - top route: $topRouteName');
-
-    if (topRouteName == CameraScannerScreen.name) {
-      _onBecameTopRoute();
-    } else {
-      _onResignedTopRoute();
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Lifecycle
+  // ---------------------------------------------------------------------------
 
   @override
   void dispose() {
-    _routerDelegate?.removeListener(_onRouteChanged);
     _scannerController.dispose();
     _isScannerMounted.dispose();
     super.dispose();
   }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
