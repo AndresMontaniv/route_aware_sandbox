@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:barcode_hid_listener/barcode_hid_listener.dart';
-import 'package:camera_scanner_kit/camera_scanner_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:camera_scanner_kit/camera_scanner_kit.dart';
+import 'package:barcode_hid_listener/barcode_hid_listener.dart';
 
 class BarcodeScreen extends StatefulWidget {
   static const name = 'barcode';
