@@ -7,7 +7,7 @@ enum _BottomMenuTab {
   home,
   example,
   barcode,
-  visibility;
+  camera;
 
   const _BottomMenuTab();
 }
@@ -87,9 +87,9 @@ class MainLayout extends StatelessWidget {
                   activeIcon: Icons.barcode_reader,
                 ),
                 _buildNavItem(
-                  tab: _BottomMenuTab.visibility,
-                  icon: Icons.visibility_off_outlined,
-                  activeIcon: Icons.visibility_off,
+                  tab: _BottomMenuTab.camera,
+                  icon: Icons.camera_alt_outlined,
+                  activeIcon: Icons.camera_alt,
                 ),
               ],
             ),
