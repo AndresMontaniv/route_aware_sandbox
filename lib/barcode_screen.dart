@@ -14,13 +14,14 @@ class BarcodeScreen extends StatefulWidget {
   State<BarcodeScreen> createState() => _BarcodeScreenState();
 }
 
-class _BarcodeScreenState extends State<BarcodeScreen> with WidgetsBindingObserver {
+class _BarcodeScreenState extends State<BarcodeScreen> {
   final BarcodeScannerController _scannerController = BarcodeScannerController();
   final ValueNotifier<bool> _isScannerMounted = ValueNotifier<bool>(true);
   final List<String> _scannedItems = [];
   RouterDelegate<Object>? _routerDelegate;
+  late final AppLifecycleListener _lifecycleListener;
 
-  // Step 1: HID service + subscription
+  // HID service + subscription
   late final BarcodeKeyboardService _keyboardService;
   StreamSubscription<BarcodeCapture>? _keyboardSubscription;
 
@@ -40,49 +41,61 @@ class _BarcodeScreenState extends State<BarcodeScreen> with WidgetsBindingObserv
     debugPrint('[BarcodeScreen] HID Listener started on init.');
   }
 
-  void _initRouterListener() {
-    _routerDelegate = GoRouter.of(context).routerDelegate;
-    _routerDelegate?.addListener(_onRouteChanged);
-  }
-
   @override
   void initState() {
     super.initState();
-    _initRouterListener();
     _initHidService();
-    WidgetsBinding.instance.addObserver(this);
+    _lifecycleListener = AppLifecycleListener(
+      onHide: () {
+        debugPrint('[BarcodeScreen] App backgrounded - OnHide.');
+        _keyboardService.stop();
+      },
+      onPause: () {
+        debugPrint('[BarcodeScreen] App backgrounded - OnPause.');
+        _keyboardService.stop();
+      },
+      onResume: () {
+        debugPrint('[BarcodeScreen] App foregrounded - OnResume.');
+        _resumeIfTopRoute();
+      },
+    );
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.detached:
-      case AppLifecycleState.hidden:
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-        debugPrint('[BarcodeScreen] App backgrounded - Pausing.');
-        _keyboardService.stop();
-        break;
-
-      case AppLifecycleState.resumed:
-        debugPrint('[BarcodeScreen] App foregrounded - Checking route.');
-        // TODO: Here we still need to figure out if we need to restart it
-        break;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_routerDelegate == null) {
+      _routerDelegate = GoRouter.of(context).routerDelegate;
+      _routerDelegate?.addListener(_onRouteChanged);
     }
   }
 
-  void _onStopBeingTopRoute() {
+  void _resumeIfTopRoute() {
+    String? topRouteName;
+    if (_routerDelegate is GoRouterDelegate) {
+      final config = (_routerDelegate as GoRouterDelegate).currentConfiguration;
+      if (config.isNotEmpty) {
+        topRouteName = config.last.route.name;
+      }
+    }
+
+    if (topRouteName == BarcodeScreen.name) {
+      _keyboardService.start();
+    }
+  }
+
+  void _onResignedTopRoute() {
     _scannerController.stop();
     if (_isScannerMounted.value) {
       _isScannerMounted.value = false;
       debugPrint('[BarcodeScreen] Route inactive - Unmounted Scanner View to free Singleton.');
     }
-    // Step 3 (inactive branch): Pause HID listener to prevent background scanning.
+    // Pause HID listener to prevent background scanning.
     _keyboardService.stop();
     debugPrint('[BarcodeScreen] Route inactive - HID Listener Paused.');
   }
 
-  void _onResumeBeingTopRoute() {
+  void _onBecameTopRoute() {
     if (!_isScannerMounted.value) {
       _isScannerMounted.value = true;
       debugPrint('[BarcodeScreen] Route active - Remounted Scanner View.');
@@ -93,7 +106,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> with WidgetsBindingObserv
     } catch (e) {
       debugPrint('[BarcodeScreen] Could not stop camera on remount: $e');
     }
-    // Step 3 (active branch): Auto-resume HID listener.
+    // Auto-resume HID listener.
     _keyboardService.start();
     debugPrint('[BarcodeScreen] Route active - HID Listener Auto-Resumed.');
   }
@@ -112,18 +125,19 @@ class _BarcodeScreenState extends State<BarcodeScreen> with WidgetsBindingObserv
     debugPrint('[BarcodeScreen] _onRouteChanged - top route: $topRouteName');
 
     if (topRouteName == BarcodeScreen.name) {
-      _onResumeBeingTopRoute();
+      _onBecameTopRoute();
     } else {
-      _onStopBeingTopRoute();
+      _onResignedTopRoute();
     }
   }
 
   @override
   void dispose() {
+    _lifecycleListener.dispose();
     _routerDelegate?.removeListener(_onRouteChanged);
     _scannerController.dispose();
     _isScannerMounted.dispose();
-    // Step 4: Tear down HID resources.
+    // Tear down HID resources.
     _keyboardSubscription?.cancel();
     _keyboardService.dispose();
     super.dispose();
