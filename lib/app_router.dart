@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import 'barcode_screen.dart';
+import 'camera_scanner_screen.dart';
 import 'example_screen.dart';
 import 'home_screen.dart';
 import 'main_layout.dart';
@@ -53,6 +54,15 @@ final appRouter = GoRouter(
               path: '/barcode',
               name: BarcodeScreen.name,
               builder: (context, state) => const BarcodeScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/camera-scanner',
+              name: CameraScannerScreen.name,
+              builder: (context, state) => const CameraScannerScreen(),
             ),
           ],
         ),
