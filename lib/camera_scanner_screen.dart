@@ -14,7 +14,7 @@ class CameraScannerScreen extends StatefulWidget {
 
 class _CameraScannerScreenState extends State<CameraScannerScreen> with TopRouteAwareMixin {
   final BarcodeScannerController _scannerController = BarcodeScannerController();
-  final ValueNotifier<bool> _isScannerMounted = ValueNotifier<bool>(true);
+  final ValueNotifier<bool> _isScannerMounted = ValueNotifier<bool>(false);
   final List<String> _scannedItems = [];
 
   // ---------------------------------------------------------------------------
@@ -30,6 +30,11 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with TopRoute
       _isScannerMounted.value = true;
       debugPrint('[CameraScannerScreen] Route active - Remounted Scanner View.');
     }
+    // ARCHITECTURAL NOTE:
+    // The native BarcodeScannerView auto-starts its camera feed when mounted.
+    // To save battery and prevent the camera from running blindly when a user
+    // returns to this tab, we intentionally force a stop() command here.
+    // This enforces our "Manual Resume" UX requirement.
     if (_scannerController.isCameraActive) {
       try {
         _scannerController.stop();
