@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'push_example.dart';
+import 'top_route_and_lifecycle_mixin.dart';
 
 enum StreamConnectionState {
   disconnected,
@@ -39,9 +40,7 @@ class ExampleScreen extends StatefulWidget {
   State<ExampleScreen> createState() => _ExampleScreenState();
 }
 
-class _ExampleScreenState extends State<ExampleScreen> {
-  late final AppLifecycleListener _lifecycleListener;
-  RouterDelegate<Object>? _routerDelegate;
+class _ExampleScreenState extends State<ExampleScreen> with TopRouteAndLifecycleMixin {
   StreamSubscription<int>? _subscription;
   final ValueNotifier<ExampleScreenStateData> _stateNotifier = ValueNotifier(
     const ExampleScreenStateData(
@@ -50,79 +49,28 @@ class _ExampleScreenState extends State<ExampleScreen> {
     ),
   );
 
-  @override
-  void initState() {
-    super.initState();
-    _startStream();
-    _lifecycleListener = AppLifecycleListener(
-      onHide: () {
-        debugPrint('[ExampleScreen] App backgrounded - Pausing.');
-        _pauseStream();
-      },
-      onPause: () {
-        debugPrint('[ExampleScreen] App backgrounded - Pausing.');
-        _pauseStream();
-      },
-      onResume: () {
-        debugPrint('[ExampleScreen] App foregrounded - Checking route.');
-        _resumeIfTopRoute();
-      },
-    );
-  }
+  // ---------------------------------------------------------------------------
+  // TopRouteAndLifecycleMixin
+  // ---------------------------------------------------------------------------
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_routerDelegate == null) {
-      _routerDelegate = GoRouter.of(context).routerDelegate;
-      _routerDelegate?.addListener(_onRouteChanged);
-    }
-  }
+  String get routeAwareName => ExampleScreen.name;
 
-  void _onRouteChanged() {
-    if (!mounted) return;
+  @override
+  void onScreenActive() => _startStream();
 
-    String? topRouteName;
-    if (_routerDelegate is GoRouterDelegate) {
-      final config = (_routerDelegate as GoRouterDelegate).currentConfiguration;
-      if (config.isNotEmpty) {
-        topRouteName = config.last.route.name;
-      }
-    }
+  @override
+  void onScreenInactive() => _pauseStream();
 
-    debugPrint('[ExampleScreen] _onRouteChanged triggered. Top route is: $topRouteName');
-
-    if (topRouteName == ExampleScreen.name) {
-      _startStream();
-    } else {
-      _pauseStream();
-      debugPrint('[ExampleScreen] Stream Paused due to route change. Last value was: ${_stateNotifier.value.value}');
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Lifecycle
+  // ---------------------------------------------------------------------------
 
   @override
   void dispose() {
-    _lifecycleListener.dispose();
-    _routerDelegate?.removeListener(_onRouteChanged);
-    _subscription?.cancel();
+    _cancelStream();
     _stateNotifier.dispose();
     super.dispose();
-  }
-
-  void _resumeIfTopRoute() {
-    String? topRouteName;
-    if (_routerDelegate is GoRouterDelegate) {
-      final config = (_routerDelegate as GoRouterDelegate).currentConfiguration;
-      if (config.isNotEmpty) {
-        topRouteName = config.last.route.name;
-      }
-    }
-
-    if (topRouteName == ExampleScreen.name) {
-      if (_stateNotifier.value.connectionState != StreamConnectionState.listening) {
-        _startStream();
-      }
-    }
   }
 
   void _startStream() {
